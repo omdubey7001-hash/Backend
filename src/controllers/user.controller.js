@@ -2,7 +2,6 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import {ApiError} from "../utils/ApiError.js"
 import {User} from "../models/user.models.js"
 import {uploadOnCloudinary} from "../utils/cloudinary.js"
-import { upload } from "../middlewares/multer.middlewares.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { response } from "express";
 const registerUser = asyncHandler( async (req, res) =>{
@@ -16,6 +15,8 @@ const registerUser = asyncHandler( async (req, res) =>{
     // check for user creation
     // return response
 
+
+    console.log(req.files)
     const {fullname, email, username, password} =req.body
     console.log("email", email);
 
@@ -29,8 +30,8 @@ const registerUser = asyncHandler( async (req, res) =>{
         throw new ApiError(400, "All fields are required")
     }
     
-    const existedUser = User.findOne({
-        $or:[{usernam},{email}]
+    const existedUser =await User.findOne({
+        $or:[{username},{email}]
     })
     // console.log(existedUser)
 
@@ -39,19 +40,23 @@ const registerUser = asyncHandler( async (req, res) =>{
 
     }
 
-     const avatarLocalPath = req.files?.avatar[0]?.path
-    // console.log(req.files)
-    const coverImageLocalPath = req.files?.avatar[0]?.path
+    const avatarLocalPath = req.files?.avatar[0]?.path;
+    //const coverImageLocalPath = req.files?.coverImage[0]?.path;
 
+    let coverImageLocalPath;
+    if (req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0) {
+        coverImageLocalPath = req.files.coverImage[0].path
+    }
     if(!avatarLocalPath){
         throw new ApiError(400, "Avatar is Required")
     }
+    //console.log(req.files)
 
     const avatar = await uploadOnCloudinary(avatarLocalPath)
-    const coverImage = await uploadOnCloudinary(coverImageLocalPath)
+    const coverImage = coverImageLocalPath? await uploadOnCloudinary(coverImageLocalPath): null;
 
     if(!avatar){
-        throw new ApiError(400, "Avatar is Required")
+        throw new ApiError(400, "Avatar upload failed")
     }
 
     const user = await User.create({
